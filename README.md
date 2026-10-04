@@ -16,6 +16,7 @@ SpongeBob SquarePants: SuperSponge ported to the web.
 
 Because GitHub has limitations on large file uploads, the required game data file must be downloaded separately.
 
-1. Download the required data file: [MediaFire - game.data](https://www.mediafire.com/file/3qkg481mtgbraas/game.data/file)
-2. Place the `game.data` file into the root directory of the game.
-3. Run npx serve or use any web server and enjoy!
+1. Download/Clone the repo and extract it if needed
+2. Download the required data file: [MediaFire - game.data](https://www.mediafire.com/file/3qkg481mtgbraas/game.data/file)
+3. Place the `game.data` file into the root directory of the game.
+4. Run npx serve or use any web server and enjoy!
