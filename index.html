@@ -1,0 +1,1680 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>SpongeBob SquarePants: SuperSponge</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧽</text></svg>">
+<style>
+:root {
+  --bg-primary: #080a09;
+  --bg-secondary: #121713;
+  --bg-panel: #0e120f;
+  --bg-overlay: rgba(8,10,9,0.94);
+  --text-primary: #eff7f0;
+  --text-secondary: #a6b6aa;
+  --text-muted: #7c9182;
+  --accent: #8fffa7;
+  --accent-hover: #b4ffc4;
+  --accent-dim: #355d40;
+  --danger: #ff6b6b;
+  --success: #8fffa7;
+  --info: #62d990;
+  --border: #26382b;
+  --shadow: rgba(0,0,0,0.4);
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font: 14px/1.5 'Segoe UI', system-ui, -apple-system, sans-serif;
+  overflow-x: hidden;
+  min-height: 100vh;
+}
+
+/* ── Header ── */
+.header {
+  background: linear-gradient(135deg, var(--bg-secondary), var(--bg-primary));
+  border-bottom: 1px solid var(--border);
+  padding: 16px 20px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.header h1 {
+  font-size: 20px;
+  font-weight: 700;
+  white-space: nowrap;
+  background: linear-gradient(135deg, var(--accent), #42d879);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.header .subtitle {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+.header-actions {
+  margin-left: auto;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+/* ── Buttons ── */
+.btn {
+  border: none;
+  border-radius: 6px;
+  padding: 8px 16px;
+  font: inherit;
+  font-weight: 600;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.15s;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+.btn:active { transform: scale(0.97); }
+.btn-primary {
+  background: var(--accent);
+  color: #08190e;
+}
+.btn-primary:hover { background: var(--accent-hover); }
+.btn-primary:disabled { background: var(--accent-dim); cursor: default; opacity: 0.7; }
+.btn-secondary {
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  border: 1px solid var(--border);
+}
+.btn-secondary:hover { background: var(--border); }
+.btn-danger { background: var(--danger); color: white; }
+.btn-danger:hover { background: #ff8888; }
+.btn-icon {
+  background: transparent;
+  color: var(--text-secondary);
+  border: 1px solid var(--border);
+  padding: 6px 10px;
+  font-size: 16px;
+}
+.btn-icon:hover { background: var(--bg-secondary); color: var(--text-primary); }
+
+/* ── Main Layout ── */
+.main-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 16px;
+  gap: 12px;
+}
+
+/* ── Canvas Wrapper ── */
+.canvas-wrapper {
+  position: relative;
+  background: #000;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 8px 32px var(--shadow);
+  border: 1px solid var(--border);
+  width: 100%;
+  max-width: 960px;
+}
+canvas#canvas {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 4/3;
+  outline: none;
+  background: black;
+}
+canvas.upscale-nearest { image-rendering: pixelated; }
+canvas.upscale-bilinear { image-rendering: auto; }
+canvas.upscale-smooth { image-rendering: auto; filter: contrast(1.05) saturate(1.1); }
+canvas.upscale-crt {
+  image-rendering: auto;
+  filter: contrast(1.1) brightness(0.95) saturate(1.1);
+}
+
+/* ── Performance Overlay ── */
+.perf-overlay {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  background: rgba(0,0,0,0.75);
+  backdrop-filter: blur(4px);
+  border-radius: 6px;
+  padding: 6px 10px;
+  font: 11px/1.4 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+  color: #0f0;
+  pointer-events: none;
+  z-index: 10;
+  min-width: 140px;
+  transition: opacity 0.2s;
+}
+.perf-overlay.hidden { opacity: 0; }
+.perf-line { display: flex; justify-content: space-between; gap: 12px; }
+.perf-label { color: #aaa; }
+.perf-value { font-weight: bold; }
+.perf-value.fps-good { color: #0f0; }
+.perf-value.fps-ok { color: #ff0; }
+.perf-value.fps-bad { color: #f33; }
+.perf-bar {
+  height: 3px;
+  background: #333;
+  border-radius: 2px;
+  margin-top: 4px;
+  overflow: hidden;
+}
+.perf-bar-fill {
+  height: 100%;
+  border-radius: 2px;
+  transition: width 0.3s, background 0.3s;
+}
+
+/* ── Controls Bar ── */
+.controls-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  width: 100%;
+  max-width: 960px;
+  padding: 8px 0;
+}
+.controls-group {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+.controls-separator {
+  width: 1px;
+  height: 24px;
+  background: var(--border);
+  margin: 0 4px;
+}
+.controls-spacer { flex: 1; }
+
+/* ── Settings Panel ── */
+.settings-panel {
+  position: fixed;
+  top: 0;
+  right: -380px;
+  width: 380px;
+  height: 100vh;
+  background: var(--bg-panel);
+  border-left: 1px solid var(--border);
+  z-index: 50;
+  transition: right 0.3s cubic-bezier(0.4,0,0.2,1);
+  display: flex;
+  flex-direction: column;
+  box-shadow: -4px 0 24px var(--shadow);
+}
+.settings-panel.open { right: 0; }
+.settings-header {
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.settings-header h2 { font-size: 16px; }
+.settings-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px 20px;
+}
+.settings-section {
+  margin-bottom: 20px;
+}
+.settings-section h3 {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--text-muted);
+  margin-bottom: 10px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--border);
+}
+.setting-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 0;
+}
+.setting-label {
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+.setting-control select,
+.setting-control input[type="range"] {
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 4px 8px;
+  font: inherit;
+  font-size: 12px;
+}
+.setting-control select { min-width: 120px; }
+.setting-control input[type="range"] {
+  width: 100px;
+  accent-color: var(--accent);
+}
+
+/* Toggle switch */
+.toggle {
+  position: relative;
+  width: 40px;
+  height: 22px;
+}
+.toggle input {
+  opacity: 0;
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 1;
+  cursor: pointer;
+}
+.toggle-slider {
+  position: absolute;
+  inset: 0;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 11px;
+  cursor: pointer;
+  transition: 0.2s;
+}
+.toggle-slider::before {
+  content: '';
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  left: 2px;
+  bottom: 2px;
+  background: var(--text-muted);
+  border-radius: 50%;
+  transition: 0.2s;
+}
+.toggle input:focus-visible + .toggle-slider { outline: 2px solid var(--accent); outline-offset: 4px; }
+.toggle input:checked + .toggle-slider { background: var(--accent); border-color: var(--accent); }
+.toggle input:checked + .toggle-slider::before { transform: translateX(18px); background: #08190e; }
+
+/* ── Gamepad Indicator ── */
+.gamepad-indicator {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--text-muted);
+  padding: 4px 8px;
+  background: var(--bg-secondary);
+  border-radius: 4px;
+  border: 1px solid var(--border);
+}
+.gamepad-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--text-muted);
+}
+.gamepad-dot.connected { background: var(--success); }
+
+/* ── Controls Help ── */
+.controls-help {
+  width: 100%;
+  max-width: 960px;
+  background: var(--bg-secondary);
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  overflow: hidden;
+}
+.controls-help summary {
+  padding: 10px 16px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  user-select: none;
+}
+.controls-help summary:hover { color: var(--text-primary); }
+.controls-help-body {
+  padding: 0 16px 16px;
+}
+.key-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 6px;
+}
+.key-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+}
+.key-badge {
+  background: var(--bg-primary);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 2px 8px;
+  font-family: monospace;
+  font-size: 11px;
+  min-width: 40px;
+  text-align: center;
+  color: var(--accent);
+}
+.key-desc { color: var(--text-secondary); }
+
+/* ── Dev Log ── */
+.dev-log {
+  width: 100%;
+  max-width: 960px;
+}
+.dev-log summary {
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--text-muted);
+  padding: 4px 0;
+}
+.dev-log textarea {
+  width: 100%;
+  height: 160px;
+  background: var(--bg-secondary);
+  color: var(--info);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 8px 12px;
+  font: 11px/1.4 'JetBrains Mono', 'Fira Code', monospace;
+  resize: vertical;
+  outline: none;
+}
+
+/* ── Loading Screen ── */
+.loading-overlay {
+  position: absolute;
+  inset: 0;
+  background: #000;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 20;
+  transition: opacity 0.5s;
+}
+.loading-overlay.fade-out {
+  opacity: 0;
+  pointer-events: none;
+}
+.loading-title {
+  font-size: 24px;
+  font-weight: 700;
+  margin-bottom: 8px;
+  background: linear-gradient(135deg, var(--accent), #42d879);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.loading-subtitle {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-bottom: 24px;
+}
+.loading-progress-track {
+  width: 280px;
+  height: 6px;
+  background: #222;
+  border-radius: 3px;
+  overflow: hidden;
+}
+.loading-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent), #42d879);
+  border-radius: 3px;
+  transition: width 0.2s;
+  width: 0%;
+}
+.loading-status {
+  margin-top: 12px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.loading-stats {
+  margin-top: 8px;
+  font-size: 11px;
+  color: var(--text-muted);
+  font-family: monospace;
+}
+
+/* ── Error Modal ── */
+.error-modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.7);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+}
+.error-modal.show { display: flex; }
+.error-box {
+  background: var(--bg-panel);
+  border: 1px solid var(--danger);
+  border-radius: 12px;
+  padding: 24px;
+  max-width: 480px;
+  width: 90%;
+  text-align: center;
+}
+.error-box h2 { color: var(--danger); margin-bottom: 12px; }
+.error-box p { color: var(--text-secondary); font-size: 13px; margin-bottom: 16px; }
+.error-box pre {
+  background: var(--bg-primary);
+  padding: 12px;
+  border-radius: 6px;
+  font-size: 11px;
+  color: var(--danger);
+  max-height: 200px;
+  overflow-y: auto;
+  text-align: left;
+  margin-bottom: 16px;
+  word-break: break-word;
+  white-space: pre-wrap;
+}
+.error-actions { display: flex; gap: 8px; justify-content: center; }
+
+/* ── Toast ── */
+.toast-container {
+  position: fixed;
+  top: 12px;
+  right: 12px;
+  z-index: 60;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.toast {
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 16px;
+  font-size: 13px;
+  color: var(--text-primary);
+  box-shadow: 0 4px 16px var(--shadow);
+  animation: toast-in 0.3s ease;
+  max-width: 320px;
+}
+.toast.success { border-left: 3px solid var(--success); }
+.toast.error { border-left: 3px solid var(--danger); }
+.toast.info { border-left: 3px solid var(--info); }
+@keyframes toast-in { from { transform: translateX(100%); opacity: 0; } }
+
+/* ── Touch Controls ── */
+.touch-controls {
+  display: none;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 8px;
+  z-index: 30;
+  pointer-events: none;
+}
+.touch-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 4px 12px;
+}
+.touch-dpad {
+  display: grid;
+  grid-template: 48px 48px 48px / 48px 48px 48px;
+  gap: 2px;
+  pointer-events: auto;
+}
+.touch-btn {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: rgba(11,27,17,0.86);
+  backdrop-filter: blur(4px);
+  border: 1px solid rgba(143,255,167,0.3);
+  color: var(--accent);
+  font-size: 14px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: auto;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: none;
+}
+.touch-btn:active { background: rgba(143,255,167,0.3); }
+.touch-action-btns {
+  display: flex;
+  gap: 6px;
+  align-items: flex-end;
+}
+
+/* ── Save Slots ── */
+.save-modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.7);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 90;
+}
+.save-modal.show { display: flex; }
+.save-box {
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 24px;
+  max-width: 400px;
+  width: 90%;
+}
+.save-box h2 { margin-bottom: 16px; font-size: 18px; }
+.save-slot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  margin-bottom: 8px;
+  cursor: pointer;
+  transition: border-color 0.15s;
+}
+.save-slot:hover { border-color: var(--accent); }
+.save-slot-info h4 { font-size: 13px; }
+.save-slot-info p { font-size: 11px; color: var(--text-muted); }
+/* ── Responsive ── */
+@media (max-width: 768px) {
+  .header h1 { font-size: 16px; }
+  .header .subtitle { display: none; }
+  .settings-panel { width: 100%; right: -100%; }
+  .canvas-wrapper { border-radius: 0; }
+  .controls-bar { padding: 8px 4px; }
+  .btn { padding: 6px 10px; font-size: 12px; }
+}
+@media (pointer: coarse) {
+  .touch-controls { display: block; }
+}
+
+/* ── Fullscreen adjustments ── */
+:fullscreen .canvas-wrapper {
+  max-width: none;
+  border: none;
+  border-radius: 0;
+}
+:fullscreen canvas#canvas {
+  width: 100vw;
+  height: 100vh;
+  object-fit: contain;
+}
+:fullscreen .perf-overlay {
+  top: 12px;
+  left: 12px;
+}
+
+/* Player shell */
+:root { color-scheme: dark; }
+body { background: radial-gradient(ellipse at 50% 0, #14271a 0, transparent 55%), var(--bg-primary); }
+.header { max-width: 1120px; margin: 0 auto; padding: 26px 32px; background: transparent; }
+.brand { display: flex; align-items: center; gap: 12px; color: var(--text-primary); font-weight: 650; letter-spacing: -.3px; }
+.brand-mark { display: grid; place-items: center; width: 36px; height: 36px; border-radius: 11px; background: var(--accent); color: #08190e; }
+.brand-mark svg { width: 22px; height: 22px; }
+.brand small { display: block; font-size: 10px; font-weight: 500; letter-spacing: 2px; color: var(--text-muted); text-transform: uppercase; }
+.icon { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; flex-shrink: 0; }
+.btn { min-height: 40px; border-radius: 9px; padding: 9px 14px; }
+.btn-icon { min-width: 40px; justify-content: center; }
+.btn:focus-visible, summary:focus-visible, select:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; }
+.main-container { padding: 30px 32px 40px; gap: 16px; max-width: 1120px; margin: auto; }
+.player-heading { width: 100%; max-width: 960px; display: flex; justify-content: space-between; gap: 20px; align-items: flex-end; margin-bottom: 6px; }
+.eyebrow { color: var(--accent); font-size: 10px; font-weight: 650; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 8px; }
+.player-heading h1 { font-size: clamp(30px, 5vw, 42px); line-height: 1.15; letter-spacing: -1.5px; font-weight: 750; }
+.player-heading p { margin-top: 8px; color: var(--text-secondary); font-size: 13px; }
+.session-status { display: inline-flex; align-items: center; gap: 8px; font: 11px/1.5 ui-monospace, monospace; padding: 7px 11px; border: 1px solid var(--border); border-radius: 30px; background: var(--bg-panel); white-space: nowrap; }
+.status-dot { height: 6px; width: 6px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 10px #8fffa744; }
+.canvas-wrapper { border-radius: 14px; border-color: #304d37; box-shadow: 0 18px 70px #0009, 0 0 0 5px #8fffa704; }
+.controls-bar { padding: 12px; background: var(--bg-panel); border: 1px solid var(--border); border-radius: 12px; gap: 8px; }
+.controller-buttons { display: none; }
+.controls-help { background: var(--bg-panel); border-radius: 12px; }
+.controls-help summary { padding: 15px 18px; }
+.quick-keys { display: flex; flex-wrap: wrap; gap: 8px 24px; max-width: 960px; width: 100%; padding: 0 4px; color: var(--text-muted); font-size: 11px; }
+.quick-keys span { display: inline-flex; align-items: center; gap: 8px; }
+.quick-keys kbd { color: var(--text-secondary); font: 11px ui-monospace, monospace; }
+.dev-log { margin-top: 0; }
+.dev-log summary { font-size: 11px; }
+.loading-title { font-size: 32px; letter-spacing: -1px; }
+.loading-subtitle { color: var(--text-secondary); }
+.loading-progress-track { width: min(280px, 70%); height: 4px; }
+.loading-progress-fill { background: var(--accent); }
+.loading-status { color: var(--text-secondary); }
+.gamepad-indicator { background: transparent; border-radius: 30px; padding: 7px 12px; }
+.settings-panel { visibility: hidden; }
+.settings-panel.open { visibility: visible; }
+.setting-row { gap: 12px; padding: 10px 0; }
+.setting-control { display: flex; gap: 8px; align-items: center; }
+.setting-control select { max-width: 205px; }
+.settings-backdrop { position: fixed; inset: 0; background: #0008; backdrop-filter: blur(3px); z-index: 45; }
+.settings-backdrop[hidden] { display: none; }
+.perf-overlay.hidden { display: none; }
+@media (max-width: 768px) {
+  .header { padding: 18px 20px; gap: 8px; }
+  .main-container { padding: 22px 16px 28px; }
+  .player-heading { align-items: flex-start; flex-direction: column; gap: 14px; }
+  .canvas-wrapper { border-radius: 10px; }
+  .controls-bar { padding: 8px; }
+  .controls-bar .controls-spacer { display: none; }
+  .header-actions { gap: 6px; }
+  .gamepad-indicator { font-size: 10px; padding: 6px 8px; }
+  .brand small { letter-spacing: 1px; }
+  .btn { padding: 8px 10px; }
+  .setting-control select { max-width: 185px; }
+}
+@media (pointer: coarse) {
+  .main-container { padding-bottom: 245px; }
+  .touch-controls { background: #0a100cf5; border-top: 1px solid var(--border); backdrop-filter: blur(12px); padding-bottom: max(8px, env(safe-area-inset-bottom)); }
+}
+@media (pointer: coarse) and (max-width: 768px) {
+  .header .brand small, .header .gamepad-indicator { display: none; }
+  .main-container { padding-top: 16px; }
+  .controls-bar > .btn-primary { display: none; }
+}
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition: none !important; animation: none !important; } }
+</style>
+</head>
+<body>
+
+<svg xmlns="http://www.w3.org/2000/svg" style="display:none" aria-hidden="true">
+<symbol id="icon-gamepad" viewBox="0 0 24 24"><path d="M7 7h10c3 0 4 4 4 8s-3 4-5 1H8c-2 3-5 3-5-1S4 7 7 7Z"/><path d="M6 11h4m-2-2v4m8-2h.01M18 13h.01"/></symbol>
+<symbol id="icon-settings" viewBox="0 0 24 24"><path d="M4 7h16M4 17h16M8 4v6m8 4v6"/></symbol>
+<symbol id="icon-fullscreen" viewBox="0 0 24 24"><path d="M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5"/></symbol>
+<symbol id="icon-pause" viewBox="0 0 24 24"><path d="M8 5v14m8-14v14"/></symbol>
+<symbol id="icon-camera" viewBox="0 0 24 24"><path d="M8 6l2-3h4l2 3h5v14H3V6Z"/><circle cx="12" cy="12" r="4"/></symbol>
+<symbol id="icon-chart" viewBox="0 0 24 24"><path d="M4 4v16h16M8 16v-4m4 4V7m4 9v-6"/></symbol>
+<symbol id="icon-sound" viewBox="0 0 24 24"><path d="M11 4L6 8H3v8h3l5 4ZM15 8a6 6 0 0 1 0 8m3-11a10 10 0 0 1 0 14"/></symbol>
+</svg>
+<header class="header">
+  <div class="brand"><span class="brand-mark"><svg class="icon" aria-hidden="true"><use href="#icon-gamepad"/></svg></span><div>SuperSponge<small>The classic, in your browser</small></div></div>
+  <div class="header-actions">
+    <div class="gamepad-indicator" id="gamepad-status"><span class="gamepad-dot" id="gamepad-dot"></span><span id="gamepad-text">Keyboard ready</span></div>
+    <button class="btn btn-icon" id="settings-trigger" onclick="toggleSettings()" aria-label="Open settings" aria-controls="settings-panel" aria-expanded="false" title="Settings"><svg class="icon" aria-hidden="true"><use href="#icon-settings"/></svg></button>
+  </div>
+</header>
+
+<!-- ── Main ── -->
+<main class="main-container">
+  <div class="player-heading">
+    <div><div class="eyebrow">SpongeBob SquarePants</div><h1>SuperSponge<span style="color:var(--accent)">.</span></h1><p>A little sponge. A big adventure.</p></div>
+    <div class="session-status" role="status"><span class="status-dot"></span><span id="session-status">Starting automatically</span></div>
+  </div>
+
+  <!-- Canvas Wrapper -->
+  <div class="canvas-wrapper" id="canvas-wrapper">
+    <!-- Performance Overlay -->
+    <div class="perf-overlay hidden" id="perf-overlay">
+      <div class="perf-line"><span class="perf-label">FPS</span><span class="perf-value" id="perf-fps">--</span></div>
+      <div class="perf-line"><span class="perf-label">Frame</span><span class="perf-value" id="perf-frametime">--</span></div>
+      <div class="perf-bar"><div class="perf-bar-fill" id="perf-fps-bar" style="width:0%;background:#0f0"></div></div>
+      <div class="perf-line" style="margin-top:4px"><span class="perf-label">WASM Mem</span><span class="perf-value" id="perf-mem">--</span></div>
+      <div class="perf-line"><span class="perf-label">JS Heap</span><span class="perf-value" id="perf-jsheap">--</span></div>
+      <div class="perf-bar"><div class="perf-bar-fill" id="perf-mem-bar" style="width:0%;background:#62d990"></div></div>
+      <div class="perf-line" style="margin-top:4px"><span class="perf-label">Draw Calls</span><span class="perf-value" id="perf-draws">--</span></div>
+      <div class="perf-line"><span class="perf-label">Uptime</span><span class="perf-value" id="perf-uptime">--</span></div>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div class="loading-overlay" id="loading-overlay">
+      <div class="loading-title">SuperSponge</div>
+      <div class="loading-subtitle">Your adventure is loading automatically.</div>
+      <div class="loading-progress-track">
+        <div class="loading-progress-fill" id="loading-progress"></div>
+      </div>
+      <div class="loading-status" id="loading-status" role="status">Preparing...</div>
+      <div class="loading-stats" id="loading-stats"></div>
+    </div>
+
+    <!-- Game Canvas -->
+    <canvas id="canvas" tabindex="0" width="640" height="480" class="upscale-nearest" aria-label="SuperSponge game"></canvas>
+  </div>
+
+  <!-- Player controls -->
+  <div class="controls-bar" role="toolbar" aria-label="Game controls">
+    <button class="btn btn-primary" onclick="tapGame(2048)" title="Start / pause (Enter)"><svg class="icon" aria-hidden="true"><use href="#icon-pause"/></svg> Start / pause</button>
+    <button class="btn btn-secondary" id="btn-fullscreen" onclick="goFullscreen()" title="Fullscreen (F11)"><svg class="icon" aria-hidden="true"><use href="#icon-fullscreen"/></svg> Fullscreen</button>
+    <button class="btn btn-secondary" id="btn-sound" onclick="toggleSound()" title="Enable sound"><svg class="icon" aria-hidden="true"><use href="#icon-sound"/></svg><span id="sound-label">Enable sound</span></button>
+    <div class="controls-spacer"></div>
+    <button class="btn btn-icon" onclick="togglePerf()" title="Performance (F3)" aria-label="Toggle performance overlay"><svg class="icon" aria-hidden="true"><use href="#icon-chart"/></svg></button>
+    <button class="btn btn-icon" onclick="captureScreenshot()" title="Screenshot (F9)" aria-label="Save screenshot"><svg class="icon" aria-hidden="true"><use href="#icon-camera"/></svg></button>
+  </div>
+  <div class="quick-keys"><span><kbd>↑ ↓ ← →</kbd> Move</span><span><kbd>C</kbd> Jump / confirm</span><span><kbd>X</kbd> Attack</span><span><kbd>Enter</kbd> Start / pause</span></div>
+
+  <!-- Controls Reference -->
+  <details class="controls-help">
+    <summary>Keyboard &amp; controller guide</summary>
+    <div class="controls-help-body">
+      <div class="key-grid">
+        <div class="key-item"><span class="key-badge">↑↓←→</span><span class="key-desc">D-Pad / Move</span></div>
+        <div class="key-item"><span class="key-badge">C</span><span class="key-desc">Cross (✕) — Confirm/Jump</span></div>
+        <div class="key-item"><span class="key-badge">X</span><span class="key-desc">Square (□) — Attack</span></div>
+        <div class="key-item"><span class="key-badge">Z</span><span class="key-desc">Triangle (△)</span></div>
+        <div class="key-item"><span class="key-badge">V</span><span class="key-desc">Circle (○) — Cancel</span></div>
+        <div class="key-item"><span class="key-badge">Enter</span><span class="key-desc">Start — Pause Menu</span></div>
+        <div class="key-item"><span class="key-badge">Space</span><span class="key-desc">Select</span></div>
+        <div class="key-item"><span class="key-badge">Shift</span><span class="key-desc">L1 Shoulder</span></div>
+        <div class="key-item"><span class="key-badge">Ctrl</span><span class="key-desc">R1 Shoulder</span></div>
+        <div class="key-item"><span class="key-badge">A / D</span><span class="key-desc">L2 / R2 Shoulder</span></div>
+        <div class="key-item"><span class="key-badge">Esc</span><span class="key-desc">Skip FMV / Cancel</span></div>
+        <div class="key-item"><span class="key-badge">F11</span><span class="key-desc">Toggle Fullscreen</span></div>
+        <div class="key-item"><span class="key-badge">F3</span><span class="key-desc">Toggle FPS Overlay</span></div>
+        <div class="key-item"><span class="key-badge">F9</span><span class="key-desc">Quick Screenshot</span></div>
+      </div>
+      <p style="margin-top:12px;font-size:12px;color:var(--text-muted)">Gamepad: Connect any standard gamepad (Xbox, PlayStation, etc.) — buttons auto-mapped.</p>
+    </div>
+  </details>
+
+  <!-- Dev Log -->
+  <details class="dev-log">
+    <summary>Diagnostics</summary>
+    <textarea id="output" readonly></textarea>
+  </details>
+</main>
+
+<!-- ── Settings Panel ── -->
+<div class="settings-backdrop" id="settings-backdrop" hidden onclick="toggleSettings()"></div>
+<div class="settings-panel" id="settings-panel" role="dialog" aria-modal="true" aria-labelledby="settings-title" inert>
+  <div class="settings-header">
+    <h2 id="settings-title">Settings</h2>
+    <button class="btn btn-icon" id="settings-close" onclick="toggleSettings()" aria-label="Close settings">✕</button>
+  </div>
+  <div class="settings-body">
+
+    <div class="settings-section">
+      <h3>Display</h3>
+      <div class="setting-row">
+        <span class="setting-label">Internal Resolution</span>
+        <div class="setting-control">
+          <select id="set-resolution" onchange="setResolution(this.value)">
+            <option value="1">1× (320×240) — Native PS1</option>
+            <option value="2" selected>2× (640×480)</option>
+            <option value="3">3× (960×720)</option>
+            <option value="4">4× (1280×960)</option>
+            <option value="6">6× (1920×1440) — Full HD</option>
+          </select>
+        </div>
+      </div>
+      <div class="setting-row">
+        <span class="setting-label">Upscale Filter</span>
+        <div class="setting-control">
+          <select id="set-filter" onchange="setFilter(this.value)">
+            <option value="nearest" selected>Nearest (Sharp/Pixelated)</option>
+            <option value="bilinear">Bilinear (Smooth)</option>
+            <option value="smooth">Enhanced (Smooth + Color)</option>
+            <option value="crt">CRT Simulation</option>
+          </select>
+        </div>
+      </div>
+      <div class="setting-row">
+        <span class="setting-label">Canvas Max Width</span>
+        <div class="setting-control">
+          <select id="set-canvas-size" onchange="setCanvasMaxWidth(this.value)">
+            <option value="640">640px (Small)</option>
+            <option value="800">800px</option>
+            <option value="960" selected>960px</option>
+            <option value="1200">1200px</option>
+            <option value="100%">Fill Screen</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <div class="settings-section">
+      <h3>Audio</h3>
+      <div class="setting-row">
+        <span class="setting-label">Master Volume</span>
+        <div class="setting-control">
+          <input type="range" id="set-volume" min="0" max="100" value="100" onchange="setVolume(this.value)" oninput="setVolume(this.value)">
+          <span id="volume-label" style="font-size:12px;color:var(--text-muted);width:36px;text-align:right">100%</span>
+        </div>
+      </div>
+      <div class="setting-row">
+        <span class="setting-label">Mute Audio</span>
+        <div class="setting-control">
+          <label class="toggle">
+            <input type="checkbox" id="set-mute" onchange="setMute(this.checked)">
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+      </div>
+    </div>
+
+    <div class="settings-section">
+      <h3>Gameplay</h3>
+      <div class="setting-row">
+        <span class="setting-label">Skip FMV Videos</span>
+        <div class="setting-control">
+          <label class="toggle">
+            <input type="checkbox" id="set-skipvideo" onchange="setSkipVideo(this.checked)">
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+      </div>
+    </div>
+
+    <div class="settings-section">
+      <h3>Performance</h3>
+      <div class="setting-row">
+        <span class="setting-label">Show FPS Overlay</span>
+        <div class="setting-control">
+          <label class="toggle">
+            <input type="checkbox" id="set-showperf" onchange="togglePerf(this.checked)">
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+      </div>
+    </div>
+
+    <div class="settings-section">
+      <h3>Data</h3>
+      <div class="setting-row">
+        <button class="btn btn-secondary" onclick="exportSave()" style="width:100%">Export Save Data</button>
+      </div>
+      <div class="setting-row">
+        <button class="btn btn-secondary" onclick="document.getElementById('import-save').click()" style="width:100%">Import Save Data</button>
+        <input type="file" id="import-save" accept=".json,.sav" style="display:none" onchange="importSave(this.files[0])">
+      </div>
+      <div class="setting-row">
+        <button class="btn btn-danger" onclick="clearAllData()" style="width:100%">Clear All Data</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ── Error Modal ── -->
+<div class="error-modal" id="error-modal">
+  <div class="error-box">
+    <h2>⚠️ Game Crashed</h2>
+    <p>The game encountered an error. This may be due to missing assets or a compatibility issue.</p>
+    <pre id="error-details"></pre>
+    <div class="error-actions">
+      <button class="btn btn-primary" onclick="location.reload()">🔄 Reload Game</button>
+      <button class="btn btn-secondary" onclick="dismissError()">✕ Dismiss</button>
+      <button class="btn btn-secondary" onclick="copyError()">📋 Copy Error</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Toast Container ── -->
+<div class="toast-container" id="toast-container"></div>
+
+<!-- ── Touch Controls ── -->
+<div class="touch-controls" id="touch-controls">
+  <div class="touch-row">
+    <div class="touch-dpad">
+      <div></div>
+      <button class="touch-btn" data-btn="up">▲</button>
+      <div></div>
+      <button class="touch-btn" data-btn="left">◄</button>
+      <div></div>
+      <button class="touch-btn" data-btn="right">►</button>
+      <div></div>
+      <button class="touch-btn" data-btn="down">▼</button>
+      <div></div>
+    </div>
+    <div class="touch-action-btns">
+      <button class="touch-btn" data-btn="square" style="width:44px;height:44px;font-size:12px">□</button>
+      <button class="touch-btn" data-btn="cross" style="width:56px;height:56px">✕</button>
+      <button class="touch-btn" data-btn="circle" style="width:44px;height:44px;font-size:12px">○</button>
+      <button class="touch-btn" data-btn="triangle" style="width:44px;height:44px;font-size:12px">△</button>
+    </div>
+  </div>
+  <div class="touch-row" style="justify-content:center;gap:20px;margin-top:4px">
+    <button class="touch-btn" data-btn="select" style="width:60px;height:32px;border-radius:16px;font-size:10px">SELECT</button>
+    <button class="touch-btn" data-btn="start" style="width:60px;height:32px;border-radius:16px;font-size:10px">START</button>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════ -->
+<script>
+'use strict';
+
+// ═══════════════ Global State ═══════════════
+var buildVersion = Date.now();
+var gameStarted = false;
+var gameRunning = false;
+var startTime = 0;
+var perfVisible = false;
+var settingsOpen = false;
+var currentVolume = 1.0;
+var glDrawCalls = 0;
+var savedSettings = {};
+
+// ═══════════════ Load saved settings ═══════════════
+try {
+  savedSettings = JSON.parse(localStorage.getItem('supersponge_settings') || '{}');
+} catch(e) {}
+function saveSetting(key, val) {
+  savedSettings[key] = val;
+  try { localStorage.setItem('supersponge_settings', JSON.stringify(savedSettings)); } catch(e) {}
+}
+
+// ═══════════════ Canvas Setup ═══════════════
+var gameCanvas = document.getElementById('canvas');
+
+// Pre-initialize WebGL context with optimal settings
+var glContext = gameCanvas.getContext('webgl', {
+  preserveDrawingBuffer: true,
+  alpha: false,
+  antialias: false,
+  depth: true,
+  stencil: false,
+  powerPreference: 'high-performance',
+  failIfMajorPerformanceCaveat: false
+});
+
+// Handle WebGL context loss gracefully
+gameCanvas.addEventListener('webglcontextlost', function(e) {
+  e.preventDefault();
+  showCrashModal('WebGL context lost. The GPU may be overloaded or the tab was backgrounded too long.\n\nClick Reload to restart the game.');
+  showToast('⚠️ WebGL context lost!', 'error');
+}, false);
+
+gameCanvas.addEventListener('webglcontextrestored', function() {
+  showToast('WebGL context restored!', 'success');
+}, false);
+
+// ═══════════════ WebGL Draw Call Counter ═══════════════
+if (glContext) {
+  (function(gl) {
+    var _drawArrays = gl.drawArrays.bind(gl);
+    var _drawElements = gl.drawElements.bind(gl);
+    gl.drawArrays = function(mode, first, count) {
+      glDrawCalls++;
+      return _drawArrays(mode, first, count);
+    };
+    gl.drawElements = function(mode, count, type, offset) {
+      glDrawCalls++;
+      return _drawElements(mode, count, type, offset);
+    };
+  })(glContext);
+}
+
+// ═══════════════ Module Configuration ═══════════════
+var Module = {
+  webSkipVideo: new URLSearchParams(location.search).has('quick') || savedSettings.skipVideo,
+  locateFile: function(p) { return p + '?v=' + buildVersion; },
+  preinitializedWebGLContext: glContext,
+  canvas: gameCanvas,
+
+  print: function(s) {
+    var o = document.getElementById('output');
+    var ts = new Date().toLocaleTimeString();
+    o.value += '[' + ts + '] ' + s + '\n';
+    o.scrollTop = o.scrollHeight;
+    console.log('[Game]', s);
+  },
+
+  printErr: function(s) {
+    console.error('[Game Error]', s);
+    var o = document.getElementById('output');
+    o.value += '[ERROR] ' + s + '\n';
+    o.scrollTop = o.scrollHeight;
+
+    // Detect fatal errors
+    if (typeof s === 'string' && (
+      s.includes('abort(') ||
+      s.includes('unreachable') ||
+      s.includes('RuntimeError') ||
+      s.includes('out of memory')
+    )) {
+      showCrashModal(s);
+    }
+  },
+
+  setStatus: function(s) {
+    function hideOverlay() {
+      var overlay = document.getElementById('loading-overlay');
+      if (overlay && !overlay.classList.contains('fade-out')) {
+        overlay.classList.add('fade-out');
+        setTimeout(function() { overlay.style.display = 'none'; }, 600);
+      }
+      gameRunning = true;
+      if (!startTime) startTime = performance.now();
+    }
+
+    if (!s || s === 'Running...') {
+      setTimeout(hideOverlay, 100);
+      return;
+    }
+
+    var statusEl = document.getElementById('loading-status');
+    var progressEl = document.getElementById('loading-progress');
+    var statsEl = document.getElementById('loading-stats');
+
+    var m = s.match(/([^(]+)\((\d+(?:\.\d+)?)\/(\d+)\)/);
+    if (m) {
+      var pct = (parseFloat(m[2]) / parseFloat(m[3]) * 100);
+      if (statusEl) statusEl.textContent = m[1].trim();
+      if (progressEl) progressEl.style.width = pct + '%';
+      if (statsEl) {
+        var loaded = (parseFloat(m[2]) / 1024 / 1024).toFixed(1);
+        var total = (parseFloat(m[3]) / 1024 / 1024).toFixed(1);
+        statsEl.textContent = loaded + ' / ' + total + ' MB';
+      }
+    } else {
+      if (statusEl) statusEl.textContent = s;
+      if (progressEl) progressEl.style.width = '100%';
+    }
+  },
+
+  onRuntimeInitialized: function() {
+    var overlay = document.getElementById('loading-overlay');
+    if (overlay) {
+      overlay.classList.add('fade-out');
+      setTimeout(function() { overlay.style.display = 'none'; }, 600);
+    }
+    gameCanvas.focus();
+    document.getElementById('session-status').textContent = 'Game running';
+    gameRunning = true;
+    startTime = performance.now();
+  },
+
+  // Memory card save/load via IndexedDB
+  preRun: [function() {
+    try {
+      if (typeof FS !== 'undefined' && typeof IDBFS !== 'undefined') {
+        FS.mkdir('/memcard');
+        FS.mount(IDBFS, {}, '/memcard');
+        FS.syncfs(true, function(err) {
+          if (err) console.warn('Could not load saved memory card data:', err);
+          else console.log('Memory card data loaded from IndexedDB');
+        });
+      }
+    } catch(e) { console.warn('Save storage setup:', e); }
+  }],
+
+  postRun: [function() {
+    setInterval(function() {
+      try {
+        if (typeof FS !== 'undefined' && typeof IDBFS !== 'undefined' && FS.syncfs) {
+          FS.syncfs(false, function(err) {
+            if (err) console.warn('Failed to sync memory card:', err);
+          });
+        }
+      } catch(e) {}
+    }, 30000);
+  }]
+};
+
+// ═══════════════ Start Game ═══════════════
+function startGame() {
+  if (gameStarted) return;
+  gameStarted = true;
+
+  document.getElementById('session-status').textContent = 'Loading adventure';
+
+  // Load game script
+  var s = document.createElement('script');
+  s.src = 'game.js?v=' + buildVersion;
+  s.onerror = function() {
+    showCrashModal('Failed to load game.js. Make sure the file exists and the server supports .js MIME type.');
+    document.getElementById('session-status').textContent = 'Could not load game';
+    document.getElementById('loading-status').textContent = 'Loading failed. Reload to try again.';
+    gameStarted = false;
+  };
+  document.body.appendChild(s);
+  gameCanvas.focus();
+}
+
+// ═══════════════ Performance Monitor ═══════════════
+var fpsHistory = [];
+var lastFrameTime = 0;
+var frameCount = 0;
+var lastFPSUpdate = 0;
+
+function updatePerf(timestamp) {
+  requestAnimationFrame(updatePerf);
+  if (!perfVisible) return;
+
+  frameCount++;
+  if (!lastFrameTime) { lastFrameTime = timestamp; lastFPSUpdate = timestamp; return; }
+
+  var dt = timestamp - lastFrameTime;
+  lastFrameTime = timestamp;
+
+  // Update FPS every 500ms
+  if (timestamp - lastFPSUpdate >= 500) {
+    var fps = Math.round(frameCount / ((timestamp - lastFPSUpdate) / 1000));
+    var frameTime = dt.toFixed(1);
+    lastFPSUpdate = timestamp;
+    frameCount = 0;
+
+    fpsHistory.push(fps);
+    if (fpsHistory.length > 60) fpsHistory.shift();
+
+    var fpsEl = document.getElementById('perf-fps');
+    var ftEl = document.getElementById('perf-frametime');
+    var fpsBarEl = document.getElementById('perf-fps-bar');
+    var memEl = document.getElementById('perf-mem');
+    var jsHeapEl = document.getElementById('perf-jsheap');
+    var memBarEl = document.getElementById('perf-mem-bar');
+    var drawsEl = document.getElementById('perf-draws');
+    var uptimeEl = document.getElementById('perf-uptime');
+
+    // FPS
+    fpsEl.textContent = fps + ' fps';
+    fpsEl.className = 'perf-value ' + (fps >= 55 ? 'fps-good' : fps >= 30 ? 'fps-ok' : 'fps-bad');
+    ftEl.textContent = frameTime + ' ms';
+    fpsBarEl.style.width = Math.min(100, fps / 60 * 100) + '%';
+    fpsBarEl.style.background = fps >= 55 ? '#0f0' : fps >= 30 ? '#ff0' : '#f33';
+
+    // WASM Memory
+    if (typeof wasmMemory !== 'undefined') {
+      try {
+        var wasmBytes = wasmMemory.buffer.byteLength;
+        memEl.textContent = (wasmBytes / 1024 / 1024).toFixed(1) + ' MB';
+        memBarEl.style.width = Math.min(100, wasmBytes / (256 * 1024 * 1024) * 100) + '%';
+      } catch(e) {
+        memEl.textContent = '--';
+      }
+    } else if (Module && Module.HEAPU8) {
+      try {
+        var heapBytes = Module.HEAPU8.length;
+        memEl.textContent = (heapBytes / 1024 / 1024).toFixed(1) + ' MB';
+        memBarEl.style.width = Math.min(100, heapBytes / (256 * 1024 * 1024) * 100) + '%';
+      } catch(e) {
+        memEl.textContent = '--';
+      }
+    }
+
+    // JS Heap (Chrome only)
+    if (performance.memory) {
+      jsHeapEl.textContent = (performance.memory.usedJSHeapSize / 1024 / 1024).toFixed(1) + ' MB';
+    } else {
+      jsHeapEl.textContent = 'N/A';
+    }
+
+    // Draw calls
+    drawsEl.textContent = glDrawCalls + '/frame';
+    glDrawCalls = 0;
+
+    // Uptime
+    if (startTime > 0) {
+      var elapsed = (performance.now() - startTime) / 1000;
+      var mins = Math.floor(elapsed / 60);
+      var secs = Math.floor(elapsed % 60);
+      uptimeEl.textContent = mins + 'm ' + secs + 's';
+    }
+  }
+}
+requestAnimationFrame(updatePerf);
+
+// ═══════════════ Display Settings ═══════════════
+function setResolution(scale) {
+  scale = parseInt(scale);
+  gameCanvas.width = 320 * scale;
+  gameCanvas.height = 240 * scale;
+  saveSetting('resolution', scale);
+  showToast('Resolution: ' + (320*scale) + '×' + (240*scale), 'info');
+}
+
+function setFilter(filter) {
+  gameCanvas.className = 'upscale-' + filter;
+  saveSetting('filter', filter);
+  showToast('Filter: ' + filter, 'info');
+}
+
+function setCanvasMaxWidth(val) {
+  var wrapper = document.getElementById('canvas-wrapper');
+  wrapper.style.maxWidth = val === '100%' ? 'none' : val + 'px';
+  saveSetting('canvasMaxWidth', val);
+}
+
+// ═══════════════ Audio Settings ═══════════════
+function applyAudioSettings() {
+  var muted = savedSettings.muted === true;
+  Module.webMasterVolume = currentVolume;
+  Module.webMuted = muted;
+  document.querySelectorAll('audio, video').forEach(function(el) {
+    el.volume = currentVolume;
+    el.muted = muted;
+  });
+  if (Module.webSpeech) {
+    Module.webSpeech.volume = currentVolume * (Module.webSpeechBaseVolume === undefined ? 1 : Module.webSpeechBaseVolume);
+    Module.webSpeech.muted = muted;
+  }
+  var sdl = Module.SDL2;
+  if (sdl && sdl.audioContext && sdl.audio && sdl.audio.scriptProcessorNode) {
+    var node = sdl.audio.scriptProcessorNode;
+    if (Module.webAudioSource !== node) {
+      if (Module.webGain) Module.webGain.disconnect();
+      Module.webGain = sdl.audioContext.createGain();
+      node.disconnect();
+      node.connect(Module.webGain);
+      Module.webGain.connect(sdl.audioContext.destination);
+      Module.webAudioSource = node;
+    }
+    Module.webGain.gain.value = muted ? 0 : currentVolume;
+  }
+  var ctx = sdl && sdl.audioContext;
+  var label = muted ? 'Unmute' : (!ctx || ctx.state !== 'running' ? 'Enable sound' : 'Mute');
+  document.getElementById('sound-label').textContent = label;
+  document.getElementById('btn-sound').title = label;
+}
+
+function resumeGameAudio() {
+  var ctx = Module.SDL2 && Module.SDL2.audioContext;
+  if (ctx && ctx.state === 'suspended') ctx.resume().then(applyAudioSettings).catch(function() {});
+  applyAudioSettings();
+}
+
+function setVolume(val) {
+  currentVolume = val / 100;
+  document.getElementById('volume-label').textContent = val + '%';
+  saveSetting('volume', Number(val));
+  applyAudioSettings();
+}
+
+function setMute(muted) {
+  saveSetting('muted', muted);
+  document.getElementById('set-mute').checked = muted;
+  applyAudioSettings();
+}
+
+function toggleSound() {
+  var ctx = Module.SDL2 && Module.SDL2.audioContext;
+  var needsActivation = soundClickIntent === 'Enable sound' || !ctx || ctx.state !== 'running';
+  soundClickIntent = null;
+  setMute(needsActivation ? false : !savedSettings.muted);
+  resumeGameAudio();
+}
+
+function tapGame(mask) {
+  resumeGameAudio();
+  if (Module._web_tap) Module._web_tap(mask);
+  gameCanvas.focus();
+}
+
+var soundClickIntent = null;
+document.getElementById('btn-sound').addEventListener('pointerdown', function() {
+  soundClickIntent = document.getElementById('sound-label').textContent;
+});
+document.addEventListener('pointerdown', function(e) {
+  if (!e.target.closest('#btn-sound')) resumeGameAudio();
+}, true);
+document.addEventListener('keydown', function(e) {
+  if (document.activeElement.id === 'btn-sound' && ['Enter', ' '].includes(e.key)) {
+    soundClickIntent = document.getElementById('sound-label').textContent;
+  } else resumeGameAudio();
+}, true);
+setInterval(applyAudioSettings, 1000);
+
+// ═══════════════ Gameplay Settings ═══════════════
+function setSkipVideo(skip) {
+  Module.webSkipVideo = skip;
+  saveSetting('skipVideo', skip);
+}
+
+// ═══════════════ Fullscreen ═══════════════
+function goFullscreen() {
+  if (document.fullscreenElement) { document.exitFullscreen().catch(function() {}); return; }
+  var wrapper = document.getElementById('canvas-wrapper');
+  if (wrapper.requestFullscreen) wrapper.requestFullscreen().catch(function() { showToast('Fullscreen is unavailable in this browser.', 'info'); });
+  else if (wrapper.webkitRequestFullscreen) wrapper.webkitRequestFullscreen();
+  gameCanvas.focus();
+}
+
+// ═══════════════ Performance Toggle ═══════════════
+function togglePerf(state) {
+  if (typeof state === 'boolean') perfVisible = state;
+  else perfVisible = !perfVisible;
+
+  document.getElementById('perf-overlay').classList.toggle('hidden', !perfVisible);
+  document.getElementById('set-showperf').checked = perfVisible;
+  saveSetting('showPerf', perfVisible);
+}
+
+// ═══════════════ Settings Panel ═══════════════
+function toggleSettings() {
+  settingsOpen = !settingsOpen;
+  var panel = document.getElementById('settings-panel');
+  panel.classList.toggle('open', settingsOpen);
+  panel.inert = !settingsOpen;
+  document.getElementById('settings-backdrop').hidden = !settingsOpen;
+  document.getElementById('settings-trigger').setAttribute('aria-expanded', settingsOpen);
+  document.body.style.overflow = settingsOpen ? 'hidden' : '';
+  document.querySelector('main').inert = settingsOpen;
+  document.querySelector('header').inert = settingsOpen;
+  if (settingsOpen) setTimeout(function() {
+    if (settingsOpen) document.getElementById('settings-close').focus({ preventScroll: true });
+  }, 320);
+  else gameCanvas.focus();
+}
+
+// ═══════════════ Screenshot ═══════════════
+function captureScreenshot() {
+  try {
+    gameCanvas.toBlob(function(blob) {
+      var url = URL.createObjectURL(blob);
+      var a = document.createElement('a');
+      a.href = url;
+      a.download = 'supersponge_' + new Date().toISOString().replace(/[:.]/g, '-') + '.png';
+      a.click();
+      URL.revokeObjectURL(url);
+      showToast('Screenshot saved!', 'success');
+    }, 'image/png');
+  } catch(e) {
+    showToast('Screenshot failed: ' + e.message, 'error');
+  }
+}
+
+// ═══════════════ Save/Load ═══════════════
+function exportSave() {
+  try {
+    var data = {};
+    for (var i = 0; i < localStorage.length; i++) {
+      var key = localStorage.key(i);
+      if (key.startsWith('supersponge') || key.startsWith('/memcard')) {
+        data[key] = localStorage.getItem(key);
+      }
+    }
+    data._settings = savedSettings;
+    data._timestamp = new Date().toISOString();
+
+    var blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = 'supersponge_save_' + Date.now() + '.json';
+    a.click();
+    URL.revokeObjectURL(url);
+    showToast('Save data exported!', 'success');
+  } catch(e) {
+    showToast('Export failed: ' + e.message, 'error');
+  }
+}
+
+function importSave(file) {
+  if (!file) return;
+  var reader = new FileReader();
+  reader.onload = function() {
+    try {
+      var data = JSON.parse(reader.result);
+      for (var key in data) {
+        if (key.startsWith('_')) continue;
+        localStorage.setItem(key, data[key]);
+      }
+      if (data._settings) {
+        savedSettings = data._settings;
+        localStorage.setItem('supersponge_settings', JSON.stringify(savedSettings));
+      }
+      showToast('Save data imported! Reload to apply.', 'success');
+    } catch(e) {
+      showToast('Import failed: invalid file', 'error');
+    }
+  };
+  reader.readAsText(file);
+}
+
+function clearAllData() {
+  if (!confirm('This will delete all save data and settings. Continue?')) return;
+  for (var i = localStorage.length - 1; i >= 0; i--) {
+    var key = localStorage.key(i);
+    if (key.startsWith('supersponge')) localStorage.removeItem(key);
+  }
+  // Clear IndexedDB
+  try { indexedDB.deleteDatabase('/memcard'); } catch(e) {}
+  showToast('All data cleared.', 'info');
+}
+
+// ═══════════════ Error Handling ═══════════════
+function showCrashModal(msg) {
+  document.getElementById('session-status').textContent = 'Game interrupted';
+  var modal = document.getElementById('error-modal');
+  var details = document.getElementById('error-details');
+  details.textContent = typeof msg === 'string' ? msg : JSON.stringify(msg);
+  modal.classList.add('show');
+}
+
+function dismissError() {
+  document.getElementById('error-modal').classList.remove('show');
+}
+
+function copyError() {
+  var text = document.getElementById('error-details').textContent;
+  navigator.clipboard.writeText(text).then(function() {
+    showToast('Error copied to clipboard', 'info');
+  });
+}
+
+// Global error handlers
+window.onerror = function(msg, url, line, col, error) {
+  console.error('[Global Error]', msg, url, line);
+  if (typeof msg === 'string' && (
+    msg.includes('abort') || msg.includes('unreachable') ||
+    msg.includes('RuntimeError') || msg.includes('memory')
+  )) {
+    showCrashModal(msg + '\n\nAt: ' + url + ':' + line + ':' + col);
+  }
+};
+
+window.addEventListener('unhandledrejection', function(e) {
+  console.error('[Unhandled Promise]', e.reason);
+  if (e.reason && typeof e.reason.message === 'string' && e.reason.message.includes('unreachable')) {
+    showCrashModal('Async Error: ' + e.reason.message);
+  }
+});
+
+// ═══════════════ Toast Notifications ═══════════════
+function showToast(msg, type) {
+  type = type || 'info';
+  var container = document.getElementById('toast-container');
+  var toast = document.createElement('div');
+  toast.className = 'toast ' + type;
+  toast.textContent = msg;
+  container.appendChild(toast);
+  setTimeout(function() {
+    toast.style.opacity = '0';
+    toast.style.transform = 'translateX(100%)';
+    toast.style.transition = 'all 0.3s';
+    setTimeout(function() { toast.remove(); }, 300);
+  }, 3000);
+}
+
+// ═══════════════ Keyboard Shortcuts ═══════════════
+document.addEventListener('keydown', function(e) {
+  if (settingsOpen) {
+    if (e.key === 'Escape') { e.preventDefault(); toggleSettings(); }
+    if (e.key === 'Tab') {
+      var focusable = Array.from(document.getElementById('settings-panel').querySelectorAll('button, select, input:not([type="file"])'));
+      var first = focusable[0], last = focusable[focusable.length - 1];
+      if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+      else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+    }
+    return;
+  }
+  // Prevent browser defaults for game keys
+  if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight',' '].includes(e.key)) {
+    e.preventDefault();
+  }
+
+  // F11 - fullscreen
+  if (e.key === 'F11') { e.preventDefault(); goFullscreen(); }
+  // F3 - toggle perf
+  if (e.key === 'F3') { e.preventDefault(); togglePerf(); }
+  // F9 - screenshot
+  if (e.key === 'F9') { e.preventDefault(); captureScreenshot(); }
+});
+
+// ═══════════════ Gamepad Support ═══════════════
+var gamepadConnected = false;
+var gamepadPollInterval = null;
+
+window.addEventListener('gamepadconnected', function(e) {
+  gamepadConnected = true;
+  document.getElementById('gamepad-dot').classList.add('connected');
+  document.getElementById('gamepad-text').textContent = e.gamepad.id.substring(0, 20);
+  showToast('Gamepad connected: ' + e.gamepad.id.substring(0, 30), 'success');
+
+  if (!gamepadPollInterval) {
+    gamepadPollInterval = setInterval(pollGamepad, 16);
+  }
+});
+
+window.addEventListener('gamepaddisconnected', function() {
+  gamepadConnected = false;
+  document.getElementById('gamepad-dot').classList.remove('connected');
+  document.getElementById('gamepad-text').textContent = 'Keyboard ready';
+  showToast('Gamepad disconnected', 'info');
+
+  if (gamepadPollInterval) {
+    clearInterval(gamepadPollInterval);
+    gamepadPollInterval = null;
+  }
+});
+
+// PS1 button mapping: Maps standard gamepad buttons to PS1 pad bits
+// PadBuffer format: [status1, status2, buttons_hi, buttons_lo]
+// Bit layout (active low): Select=0x0100, Start=0x0800, Up=0x1000, Right=0x2000,
+// Down=0x4000, Left=0x8000, L2=0x0001, R2=0x0002, L1=0x0004, R1=0x0008,
+// Triangle=0x0010, Circle=0x0020, Cross=0x0040, Square=0x0080
+var GAMEPAD_MAP = {
+  0: 0x0040,  // A/Cross → Cross
+  1: 0x0020,  // B/Circle → Circle
+  2: 0x0080,  // X/Square → Square
+  3: 0x0010,  // Y/Triangle → Triangle
+  4: 0x0004,  // LB → L1
+  5: 0x0008,  // RB → R1
+  6: 0x0001,  // LT → L2
+  7: 0x0002,  // RT → R2
+  8: 0x0100,  // Back/Select → Select
+  9: 0x0800,  // Start → Start
+  12: 0x1000, // DPad Up
+  13: 0x4000, // DPad Down
+  14: 0x8000, // DPad Left
+  15: 0x2000  // DPad Right
+};
+
+function pollGamepad() {
+  if (!gamepadConnected || !Module._web_tap) return;
+
+  var gamepads = navigator.getGamepads();
+  if (!gamepads) return;
+
+  for (var i = 0; i < gamepads.length; i++) {
+    var gp = gamepads[i];
+    if (!gp || !gp.connected) continue;
+
+    var mask = 0;
+
+    // Buttons
+    for (var btn in GAMEPAD_MAP) {
+      if (gp.buttons[btn] && gp.buttons[btn].pressed) {
+        mask |= GAMEPAD_MAP[btn];
+      }
+    }
+
+    // Left analog stick → D-pad
+    var deadzone = 0.4;
+    if (gp.axes[0] < -deadzone) mask |= 0x8000; // Left
+    if (gp.axes[0] > deadzone) mask |= 0x2000;  // Right
+    if (gp.axes[1] < -deadzone) mask |= 0x1000;  // Up
+    if (gp.axes[1] > deadzone) mask |= 0x4000;  // Down
+
+    if (mask) {
+      Module._web_tap(mask);
+    }
+    break; // Only use first gamepad
+  }
+}
+
+// ═══════════════ Touch Controls ═══════════════
+var TOUCH_MAP = {
+  'up': 0x1000,
+  'down': 0x4000,
+  'left': 0x8000,
+  'right': 0x2000,
+  'cross': 0x0040,
+  'circle': 0x0020,
+  'square': 0x0080,
+  'triangle': 0x0010,
+  'start': 0x0800,
+  'select': 0x0100
+};
+
+document.querySelectorAll('.touch-btn[data-btn]').forEach(function(btn) {
+  var btnName = btn.getAttribute('data-btn');
+  var mask = TOUCH_MAP[btnName];
+  if (!mask) return;
+
+  function press(e) {
+    e.preventDefault();
+    if (Module._web_tap) Module._web_tap(mask);
+  }
+  btn.addEventListener('touchstart', press, { passive: false });
+  btn.addEventListener('mousedown', press);
+});
+
+// ═══════════════ Canvas Focus ═══════════════
+gameCanvas.addEventListener('click', function() { gameCanvas.focus(); });
+
+// ═══════════════ Apply Saved Settings ═══════════════
+function applySettings() {
+  if (savedSettings.resolution) {
+    document.getElementById('set-resolution').value = savedSettings.resolution;
+    setResolution(savedSettings.resolution);
+  }
+  if (savedSettings.filter) {
+    document.getElementById('set-filter').value = savedSettings.filter;
+    setFilter(savedSettings.filter);
+  }
+  if (savedSettings.canvasMaxWidth) {
+    document.getElementById('set-canvas-size').value = savedSettings.canvasMaxWidth;
+    setCanvasMaxWidth(savedSettings.canvasMaxWidth);
+  }
+  if (savedSettings.volume !== undefined) {
+    document.getElementById('set-volume').value = savedSettings.volume;
+    setVolume(savedSettings.volume);
+  }
+  if (savedSettings.muted) {
+    document.getElementById('set-mute').checked = true;
+    setMute(true);
+  }
+  if (savedSettings.skipVideo) {
+    document.getElementById('set-skipvideo').checked = true;
+    Module.webSkipVideo = true;
+  }
+  togglePerf(savedSettings.showPerf === true);
+
+}
+
+document.querySelectorAll('.setting-row').forEach(function(row) {
+  var label = row.querySelector('.setting-label');
+  var input = row.querySelector('select, input');
+  if (label && input) input.setAttribute('aria-label', label.textContent);
+});
+applySettings();
+
+// Load immediately on every visit.
+startGame();
+
+// ═══════════════ Service Worker for Offline (optional) ═══════════════
+// Commented out: uncomment if you want offline support
+// if ('serviceWorker' in navigator) {
+//   navigator.serviceWorker.register('sw.js').catch(function(){});
+// }
+
+console.log('%c🧽 SuperSponge Web Port', 'font-size:20px;font-weight:bold;color:#8fffa7');
+console.log('%cPS1 → WebAssembly | PsyCross + Emscripten', 'color:#a6b6aa');
+console.log('%cPress F3 for FPS overlay, F9 for screenshot, F11 for fullscreen', 'color:#7c9182');
+
+</script>
+</body>
+</html>
